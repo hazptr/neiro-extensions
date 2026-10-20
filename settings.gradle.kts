@@ -28,7 +28,7 @@ dependencyResolutionManagement {
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
-rootProject.name = "Keiyoushi"
+rootProject.name = "Neiro"
 
 /**
  * Add or remove modules to load as needed for local development here.
