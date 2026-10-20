@@ -39,15 +39,15 @@ body::after {
     radial-gradient(40vmax 40vmax at 15% 20%, color-mix(in srgb, var(--accent) 38%, transparent), transparent 60%),
     radial-gradient(35vmax 35vmax at 85% 30%, color-mix(in srgb, var(--accent-2) 30%, transparent), transparent 60%),
     radial-gradient(45vmax 45vmax at 50% 95%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%);
-  filter: blur(40px) saturate(130%);
+  /* Transform-only animation stays on the compositor; a blur filter here was the most expensive layer on phones */
+  will-change: transform;
   animation: drift 28s ease-in-out infinite alternate;
 }
 
 body::after {
   animation-duration: 41s;
   animation-direction: alternate-reverse;
-  opacity: 0.6;
-  mix-blend-mode: screen;
+  opacity: 0.45;
 }
 
 @keyframes drift {
@@ -95,8 +95,8 @@ a { color: inherit; }
   width: min(1120px, calc(100% - 28px));
   border: 1px solid var(--glass-edge);
   border-radius: 999px;
-  background: rgba(10, 14, 22, 0.8);
-  backdrop-filter: blur(18px) saturate(150%);
+  /* Solid rather than a backdrop blur: the bubbles behind it move every frame, so a blur would be redone every frame */
+  background: rgba(10, 14, 22, 0.9);
 }
 
 .nav a.brand {
@@ -212,7 +212,6 @@ a { color: inherit; }
   font-weight: 700;
   text-decoration: none;
   cursor: pointer;
-  backdrop-filter: blur(12px);
   transition: transform 0.25s cubic-bezier(.2, .8, .2, 1), box-shadow 0.25s, background 0.25s;
 }
 
@@ -288,7 +287,6 @@ h2 {
     linear-gradient(160deg, rgba(22, 28, 40, 0.86), rgba(10, 13, 20, 0.82));
   color: inherit;
   text-decoration: none;
-  backdrop-filter: blur(14px) saturate(140%);
   transform: rotateX(var(--rx)) rotateY(var(--ry));
   transform-style: preserve-3d;
   transition: transform 0.35s cubic-bezier(.2, .8, .2, 1), border-color 0.3s, box-shadow 0.3s;

@@ -67,12 +67,11 @@
       this.y = fromBottom ? height + this.r + rand(0, 120) : rand(this.r, height - this.r);
       this.vx = rand(-0.25, 0.25);
       this.vy = rand(-0.45, -0.1);
-      this.color = hexToRgb(palette[Math.floor(Math.random() * palette.length)]);
+      this.colorIndex = Math.floor(Math.random() * palette.length);
+      this.color = hexToRgb(palette[this.colorIndex]);
       this.glyph = glyphs.length && Math.random() < 0.35 ? glyphs[Math.floor(Math.random() * glyphs.length)] : null;
       this.phase = rand(0, TAU);
       this.wobble = rand(0.6, 1.4);
-      this.spin = rand(-0.004, 0.004);
-      this.angle = rand(0, TAU);
       this.born = performance.now();
       this.alive = true;
     }
@@ -111,7 +110,6 @@
       }
       this.x += this.vx * dt;
       this.y += this.vy * dt;
-      this.angle += this.spin * dt;
 
       // Walls bounce softly; the top wraps back to the bottom
       if (this.x < this.r) { this.x = this.r; this.vx = Math.abs(this.vx) * 0.6; }
@@ -121,49 +119,14 @@
     }
 
     draw(ctx, t) {
-      const [r, g, b] = this.color;
       const age = Math.min(1, (performance.now() - this.born) / 600);
       const wob = Math.sin(t / 380 * this.wobble + this.phase) * 0.04;
-      const rx = this.r * (1 + wob) * age;
-      const ry = this.r * (1 - wob) * age;
-      ctx.save();
-      ctx.translate(this.x, this.y);
-      ctx.rotate(this.angle);
-
-      // Body: clear in the middle, coloured towards the rim, like a soap film
-      const body = ctx.createRadialGradient(-rx * 0.25, -ry * 0.3, rx * 0.1, 0, 0, Math.max(rx, ry));
-      body.addColorStop(0, `rgba(${r},${g},${b},0.04)`);
-      body.addColorStop(0.7, `rgba(${r},${g},${b},0.16)`);
-      body.addColorStop(1, `rgba(${r},${g},${b},0.42)`);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, rx, ry, 0, 0, TAU);
-      ctx.fillStyle = body;
-      ctx.fill();
-
-      // Iridescent rim
-      const rim = ctx.createLinearGradient(-rx, -ry, rx, ry);
-      rim.addColorStop(0, `rgba(255,255,255,0.55)`);
-      rim.addColorStop(0.5, `rgba(${r},${g},${b},0.7)`);
-      rim.addColorStop(1, `rgba(${255 - r},${255 - g},${255 - b},0.35)`);
-      ctx.lineWidth = Math.max(1, this.r / 22);
-      ctx.strokeStyle = rim;
-      ctx.stroke();
-
-      // Specular highlight
-      ctx.beginPath();
-      ctx.ellipse(-rx * 0.38, -ry * 0.42, rx * 0.26, ry * 0.13, -0.6, 0, TAU);
-      ctx.fillStyle = 'rgba(255,255,255,0.55)';
-      ctx.fill();
-
-      if (this.glyph) {
-        ctx.rotate(-this.angle);
-        ctx.fillStyle = `rgba(255,255,255,${0.55 * age})`;
-        ctx.font = `700 ${Math.max(1, Math.round(this.r * 0.9 * age))}px "M PLUS Rounded 1c", system-ui, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(this.glyph, 0, this.r * 0.05);
-      }
-      ctx.restore();
+      const sprite = this.field.sprite(this);
+      // The sprite is drawn once per look; each frame only stamps it, squashed a little for the wobble
+      const size = this.r * sprite.scale;
+      const w = size * (1 + wob) * age;
+      const h = size * (1 - wob) * age;
+      ctx.drawImage(sprite.canvas, this.x - w / 2, this.y - h / 2, w, h);
     }
   }
 
@@ -222,6 +185,7 @@
       this.pointer = { x: 0, y: 0, vx: 0, vy: 0, active: false, down: false, downAt: 0 };
       this.bubbles = [];
       this.bursts = [];
+      this.sprites = new Map();
       this.still = prefersReducedMotion();
       this.resize();
       addEventListener('resize', () => this.resize());
@@ -231,7 +195,10 @@
     }
 
     resize() {
-      const dpr = Math.min(2, devicePixelRatio || 1);
+      // Soft shapes do not need full phone resolution, and every extra pixel is filled each frame
+      const dpr = Math.min(1.5, devicePixelRatio || 1);
+      this.dpr = dpr;
+      this.sprites?.clear();
       this.width = innerWidth;
       this.height = innerHeight;
       this.scale = Math.max(0.7, Math.min(1.3, Math.min(this.width, this.height) / 800));
@@ -292,9 +259,70 @@
       bubble.reset(true);
     }
 
+    /**
+     * A pre-rendered bubble for a colour, glyph and size step. Drawing gradients, rims and text for
+     * every bubble on every frame was most of the cost of the page on phones.
+     */
+    sprite(bubble) {
+      const step = Math.max(8, Math.round(bubble.r / 4) * 4);
+      const key = `${bubble.colorIndex}|${bubble.glyph ?? ''}|${step}`;
+      let sprite = this.sprites.get(key);
+      if (sprite) return sprite;
+
+      const pad = 1.12;
+      const size = step * 2 * pad;
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = Math.ceil(size * this.dpr);
+      const c = canvas.getContext('2d');
+      c.scale(this.dpr, this.dpr);
+      c.translate(size / 2, size / 2);
+      const [r, g, b] = bubble.color;
+      const rad = step;
+
+      // Body: clear in the middle, coloured towards the rim, like a soap film
+      const body = c.createRadialGradient(-rad * 0.25, -rad * 0.3, rad * 0.1, 0, 0, rad);
+      body.addColorStop(0, `rgba(${r},${g},${b},0.04)`);
+      body.addColorStop(0.7, `rgba(${r},${g},${b},0.16)`);
+      body.addColorStop(1, `rgba(${r},${g},${b},0.42)`);
+      c.beginPath();
+      c.arc(0, 0, rad, 0, TAU);
+      c.fillStyle = body;
+      c.fill();
+
+      // Iridescent rim
+      const rim = c.createLinearGradient(-rad, -rad, rad, rad);
+      rim.addColorStop(0, 'rgba(255,255,255,0.55)');
+      rim.addColorStop(0.5, `rgba(${r},${g},${b},0.7)`);
+      rim.addColorStop(1, `rgba(${255 - r},${255 - g},${255 - b},0.35)`);
+      c.lineWidth = Math.max(1, rad / 22);
+      c.strokeStyle = rim;
+      c.stroke();
+
+      // Specular highlight
+      c.beginPath();
+      c.ellipse(-rad * 0.38, -rad * 0.42, rad * 0.26, rad * 0.13, -0.6, 0, TAU);
+      c.fillStyle = 'rgba(255,255,255,0.55)';
+      c.fill();
+
+      if (bubble.glyph) {
+        c.fillStyle = 'rgba(255,255,255,0.55)';
+        c.font = `700 ${Math.round(rad * 0.9)}px "M PLUS Rounded 1c", system-ui, sans-serif`;
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText(bubble.glyph, 0, rad * 0.05);
+      }
+
+      // `scale` maps a bubble's radius to the drawn size, so one sprite serves a whole size step
+      sprite = { canvas, scale: size / step };
+      this.sprites.set(key, sprite);
+      return sprite;
+    }
+
     frame(t) {
       requestAnimationFrame((n) => this.frame(n));
       if (document.hidden) return;
+      // 60fps is plenty for drifting bubbles; 120Hz phones would otherwise do twice the work
+      if (t - this.last < 15) return;
       const dt = Math.min(3, (t - this.last) / 16.67);
       this.last = t;
       const ctx = this.ctx;
@@ -307,16 +335,27 @@
       }
 
       if (this.pointer.active && !this.still) {
-        const glow = ctx.createRadialGradient(this.pointer.x, this.pointer.y, 0, this.pointer.x, this.pointer.y, 140);
-        const [r, g, b] = hexToRgb(this.palette[0]);
-        glow.addColorStop(0, `rgba(${r},${g},${b},${this.pointer.down ? 0.22 : 0.12})`);
-        glow.addColorStop(1, `rgba(${r},${g},${b},0)`);
-        ctx.fillStyle = glow;
-        ctx.fillRect(this.pointer.x - 140, this.pointer.y - 140, 280, 280);
+        this.glow ??= this.makeGlow();
+        ctx.globalAlpha = this.pointer.down ? 1 : 0.55;
+        ctx.drawImage(this.glow, this.pointer.x - 140, this.pointer.y - 140, 280, 280);
+        ctx.globalAlpha = 1;
       }
 
       for (const b of this.bubbles) b.draw(ctx, this.still ? 0 : t);
       for (const burst of this.bursts) burst.draw(ctx);
+    }
+
+    makeGlow() {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 140;
+      const c = canvas.getContext('2d');
+      const [r, g, b] = hexToRgb(this.palette[0]);
+      const glow = c.createRadialGradient(70, 70, 0, 70, 70, 70);
+      glow.addColorStop(0, `rgba(${r},${g},${b},0.22)`);
+      glow.addColorStop(1, `rgba(${r},${g},${b},0)`);
+      c.fillStyle = glow;
+      c.fillRect(0, 0, 140, 140);
+      return canvas;
     }
 
     // Soft collisions so bubbles nudge each other instead of overlapping
