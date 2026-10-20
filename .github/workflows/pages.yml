@@ -28,6 +28,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Version assets
+        # Browsers cache site assets for 10 minutes; a content hash in each link makes a deploy show up at once
+        run: |
+          python3 - <<'PY'
+          import hashlib, pathlib, re
+          site = pathlib.Path("site")
+          for page in site.rglob("*.html"):
+              html = page.read_text()
+              def versioned(m):
+                  digest = hashlib.sha256((page.parent / m.group(2)).read_bytes()).hexdigest()[:10]
+                  return f'{m.group(1)}{m.group(2)}?v={digest}"'
+              page.write_text(re.sub(r'((?:href|src)=")(assets/[\w./-]+\.(?:css|js))(?:\?v=\w+)?"', versioned, html))
+          PY
+
       - name: Configure Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
