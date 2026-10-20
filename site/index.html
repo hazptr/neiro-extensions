@@ -91,7 +91,7 @@
 
     const STORE = document.getElementById('store-url').textContent;
     const BASE = STORE.replace(/\/index\.min\.json$/, '');
-    document.getElementById('add').href = `tachiyomi://add-repo?url=${encodeURIComponent(STORE)}`;
+    document.getElementById('add').href = `neiro://add-repo?url=${encodeURIComponent(STORE)}`;
 
     for (const button of document.querySelectorAll('[data-copy]')) {
       button.addEventListener('click', async () => {
