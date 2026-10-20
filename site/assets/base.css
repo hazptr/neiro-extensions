@@ -27,12 +27,11 @@ body {
   font: 16px/1.6 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
-/* Slow-moving colour fields behind everything */
-body::before,
-body::after {
+/* A slow-moving colour field behind everything */
+body::before {
   content: "";
   position: fixed;
-  inset: -20vmax;
+  inset: -8vmax;
   z-index: -2;
   pointer-events: none;
   background:
@@ -44,16 +43,10 @@ body::after {
   animation: drift 28s ease-in-out infinite alternate;
 }
 
-body::after {
-  animation-duration: 41s;
-  animation-direction: alternate-reverse;
-  opacity: 0.45;
-}
-
 @keyframes drift {
   0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
-  50% { transform: translate3d(4vmax, -3vmax, 0) rotate(12deg) scale(1.08); }
-  100% { transform: translate3d(-3vmax, 4vmax, 0) rotate(-8deg) scale(0.95); }
+  50% { transform: translate3d(3vmax, -2vmax, 0) rotate(4deg) scale(1.04); }
+  100% { transform: translate3d(-2vmax, 3vmax, 0) rotate(-3deg) scale(1.02); }
 }
 
 canvas.bubbles {
@@ -153,11 +146,22 @@ a { color: inherit; }
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation: shimmer 9s linear infinite;
+  /* One sweep, then still: a running shimmer repaints this huge text on every frame */
+  animation: shimmer 2.6s cubic-bezier(.3, .7, .2, 1) 0.4s 1 both;
+}
+
+@media (hover: hover) {
+  .hero h1:hover { animation: shimmer-again 2.6s cubic-bezier(.3, .7, .2, 1) 1 both; }
 }
 
 @keyframes shimmer {
-  to { background-position: -250% 0; }
+  from { background-position: 100% 0; }
+  to { background-position: -150% 0; }
+}
+
+@keyframes shimmer-again {
+  from { background-position: 100% 0; }
+  to { background-position: -150% 0; }
 }
 
 /* A soft dark halo behind the hero text keeps it readable over the bubbles */
@@ -186,8 +190,12 @@ a { color: inherit; }
   text-shadow: 0 1px 12px rgba(0, 0, 0, 0.8);
 }
 
+/* The shadow sits on the child so the bob only moves an already-drawn layer */
 .float {
   animation: float 6s ease-in-out infinite;
+}
+
+.float > * {
   filter: drop-shadow(0 30px 60px var(--glow));
 }
 
