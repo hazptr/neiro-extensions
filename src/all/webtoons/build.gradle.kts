@@ -8,7 +8,7 @@ keiyoushi {
     // Own package and name, so it installs alongside keiyoushi's Webtoons.com and its source IDs differ.
     name = "Webtoons.com Audio"
     pkgName = "all.webtoonsaudio"
-    versionCode = 1
+    versionCode = 2
     contentWarning = ContentWarning.SAFE
     libVersion = "1.6"
 

@@ -24,6 +24,10 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from xml.etree import ElementTree
+
+ANDROID_NS = "http://schemas.android.com/apk/res/android"
+AUDIO_METADATA = "neiro.extension.audio"
 
 REPO_META = {
     "name": "Neiro Extensions",
@@ -73,6 +77,19 @@ def signing_fingerprint(apksigner: str, apk: Path) -> str:
     return digests.pop()
 
 
+def has_audio(module: str) -> bool:
+    """Whether the module's manifest declares that it attaches background music to chapters."""
+    manifest = SOURCE_DIR / "src" / module.replace(".", "/") / "AndroidManifest.xml"
+    if not manifest.exists():
+        return False
+    application = ElementTree.parse(manifest).getroot().find("application")
+    return any(
+        meta.get(f"{{{ANDROID_NS}}}name") == AUDIO_METADATA and meta.get(f"{{{ANDROID_NS}}}value") == "true"
+        for meta in (application if application is not None else [])
+        if meta.tag == "meta-data"
+    )
+
+
 def icon_path(module: str, theme: str | None) -> Path:
     candidates = [SOURCE_DIR / "src" / module.replace(".", "/") / ICON_FILE]
     if theme:
@@ -114,6 +131,8 @@ def main(artifacts_dir: Path, output_dir: Path) -> None:
                 "version": info["versionName"],
                 # contentWarning: SAFE=1, MIXED=2, NSFW=3
                 "nsfw": 1 if info["contentWarning"] > 2 else 0,
+                # Neiro badges extensions that play background music
+                "audio": 1 if has_audio(info["module"]) else 0,
                 "sources": [
                     {
                         "name": source["name"],
