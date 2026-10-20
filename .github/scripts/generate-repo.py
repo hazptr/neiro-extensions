@@ -34,9 +34,10 @@ REPO_META = {
 SOURCE_DIR = Path(__file__).resolve().parents[2]
 ICON_FILE = "res/mipmap-xhdpi/ic_launcher.png"
 
-# Older apksigner labels signers "#1"; newer ones may label them by SDK range instead.
-CERT_DIGEST_REGEX = re.compile(r"^Signer (?:#\d+|\([^)]*\)) certificate SHA-256 digest: ([0-9a-f]{64})$", re.MULTILINE)
-CERT_DN_REGEX = re.compile(r"^Signer (?:#\d+|\([^)]*\)) certificate DN: (.*)$", re.MULTILINE)
+# apksigner labels signers "Signer #1", "V2 Signer:" or by SDK range, depending on its version
+SIGNER = r"^(?:V\d+ )?Signer(?: #\d+| \([^)]*\))?:? certificate"
+CERT_DIGEST_REGEX = re.compile(SIGNER + r" SHA-256 digest: ([0-9a-f]{64})$", re.MULTILINE)
+CERT_DN_REGEX = re.compile(SIGNER + r" DN: (.*)$", re.MULTILINE)
 
 
 def find_apksigner() -> str:
