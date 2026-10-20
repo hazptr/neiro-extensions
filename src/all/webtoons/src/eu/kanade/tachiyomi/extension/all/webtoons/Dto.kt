@@ -34,3 +34,33 @@ class MotionToonResponse(
 class MotionToonAssets(
     val images: Map<String, String>,
 )
+
+// Background music ("sound episodes"). The viewer page inlines a window.__audioProperties__
+// object; each entry names an audio track plus the images it should start and stop on.
+@Serializable
+class EpisodeBgm(
+    val audioId: String,
+    val playImageUrl: String = "",
+    val stopImageUrl: String = "",
+)
+
+// Naver audiocloud hands back a base64 blob that wraps the real, signed media URL.
+@Serializable
+class AudioTokenResponse(
+    val result: AudioTokenResult,
+)
+
+@Serializable
+class AudioTokenResult(
+    val playToken: String,
+)
+
+@Serializable
+class PlayToken(
+    val audioInfo: AudioInfo,
+)
+
+@Serializable
+class AudioInfo(
+    val url: String,
+)

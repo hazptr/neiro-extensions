@@ -1,8 +1,13 @@
 package eu.kanade.tachiyomi.extension.all.webtoons
 
+import android.util.Base64
 import androidx.preference.PreferenceScreen
 import androidx.preference.SwitchPreferenceCompat
+import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.ConfigurableSource
+import eu.kanade.tachiyomi.source.model.AudioCue
+import eu.kanade.tachiyomi.source.model.AudioTrack
+import eu.kanade.tachiyomi.source.model.ChapterAudio
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.Page
@@ -26,7 +31,9 @@ import kotlinx.serialization.json.JsonElement
 import okhttp3.Headers
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
+import okhttp3.Response
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
@@ -72,6 +79,7 @@ abstract class Webtoons :
             }
         }
         addInterceptor(TextInterceptor())
+        addInterceptor(::bgmIntercept)
         rateLimit(1) { it.host == mobileUrl.toHttpUrl().host }
     }
 
@@ -348,7 +356,12 @@ abstract class Webtoons :
         val document = client.get(getChapterUrl(chapter)).asJsoup()
         val useMaxQuality = useMaxQualityPref()
 
-        val pages = document.select("div#_imageList > img").mapIndexed { i, element ->
+        val imageElements = document.select("div#_imageList > img")
+        // The site matches bgm anchors against the untouched data-url, so keep a copy before
+        // the max-quality rewrite below mangles them.
+        val rawImageUrls = imageElements.map { it.attr("data-url") }
+
+        val pages = imageElements.mapIndexed { i, element ->
             val imageUrl = element.attr("data-url").toHttpUrl()
 
             if (useMaxQuality && imageUrl.queryParameter("type") == "q90") {
@@ -380,7 +393,113 @@ abstract class Webtoons :
             }
         }
 
+        // Runs last so an open-ended cue's default stop (pages.size) covers the notes page too.
+        // ChapterAudio is compileOnly and absent from apps that predate it; runCatching turns
+        // the resulting LinkageError into "no music" instead of a dead chapter.
+        runCatching { attachBgm(document, pages, rawImageUrls) }
+
         return pages
+    }
+
+    /**
+     * Builds this episode's audio cues and attaches them to the first page.
+     *
+     * ChapterAudio/AudioTrack/AudioCue/Page.chapterAudio are compileOnly and absent from the
+     * built APK, so every reference to them stays in this one method: the runCatching wrapped
+     * around the call site is then the only place ART can throw the LinkageError, and an app
+     * that predates the API degrades to "no music" instead of a dead chapter. That is what lets
+     * this ship at libVersion 1.6 rather than gating the whole source behind a new one. The JSON
+     * parse below shares the guard, since Naver's markup can drift into invalid JSON too.
+     *
+     * Mirrors the site's own anchor logic: a track names the image it starts on and the image it
+     * stops on, matched as a substring of that image's raw data-url. An empty anchor is the
+     * site's own "no bound on this side" (its check is `indexOf(anchor) > 0`, so a blank anchor
+     * never matches); a non-empty anchor that fails to match is a genuine resolution failure and
+     * the cue is dropped rather than widened, so it cannot blanket over other tracks.
+     */
+    private fun attachBgm(document: Document, pages: List<Page>, rawImageUrls: List<String>) {
+        if (pages.isEmpty()) return
+
+        val bgmList = BGM_LIST_REGEX.find(document.html())
+            ?.groupValues?.get(1)
+            ?.parseAs<List<EpisodeBgm>>()
+            ?: return
+
+        val cues = bgmList.mapNotNull { bgm ->
+            val start = rawImageUrls.resolveAnchor(bgm.playImageUrl)
+            val stop = rawImageUrls.resolveAnchor(bgm.stopImageUrl)
+
+            if (start is Anchor.Unresolved || stop is Anchor.Unresolved) return@mapNotNull null
+
+            val fromPageIndex = (start as? Anchor.At)?.index ?: 0
+            val toPageIndex = (stop as? Anchor.At)?.index ?: pages.size
+            if (toPageIndex <= fromPageIndex) return@mapNotNull null
+
+            AudioCue(trackId = bgm.audioId, fromPageIndex = fromPageIndex, toPageIndex = toPageIndex)
+        }
+
+        if (cues.isEmpty()) return
+
+        // Drop tracks nothing points at, so a track whose only cue failed to resolve does not
+        // still get published for the app to fetch.
+        val trackIds = cues.map { it.trackId }.toSet()
+        val tracks = bgmList
+            .filter { it.audioId in trackIds }
+            .distinctBy { it.audioId }
+            .map {
+                // Resolving the playable URL is deferred to bgmIntercept: the gateway only
+                // issues URLs that expire within the hour, and this page list gets cached to disk.
+                AudioTrack(id = it.audioId, url = audioTokenUrl(it.audioId))
+            }
+
+        pages[0].chapterAudio = ChapterAudio(tracks = tracks, cues = cues)
+    }
+
+    private sealed interface Anchor {
+        object None : Anchor
+        object Unresolved : Anchor
+        data class At(val index: Int) : Anchor
+    }
+
+    private fun List<String>.resolveAnchor(anchor: String): Anchor {
+        if (anchor.isEmpty()) return Anchor.None
+        val index = indexOfFirst { it.indexOf(anchor) > 0 }
+        return if (index >= 0) Anchor.At(index) else Anchor.Unresolved
+    }
+
+    private fun audioTokenUrl(audioId: String): String = "https://$AUDIO_API_HOST${AUDIO_API_PATH}play/audio/$audioId/audio/token".toHttpUrl()
+        .newBuilder()
+        .addQueryParameter("quality", "MIDDLE")
+        .addQueryParameter("acceptCodecs", "AAC,MP3")
+        .build()
+        .toString()
+
+    /**
+     * Turns a Naver audiocloud token request into the audio itself, so the app never has to know
+     * about the two-step handshake or hold a URL that expires while a chapter sits in the cache.
+     */
+    private fun bgmIntercept(chain: Interceptor.Chain): Response {
+        val request = chain.request()
+        // apis.naver.com is a general API host; scope the hijack to the audiocloud path too so
+        // an unrelated future call to the same host is not swallowed here.
+        if (request.url.host != AUDIO_API_HOST || !request.url.encodedPath.startsWith(AUDIO_API_PATH)) {
+            return chain.proceed(request)
+        }
+
+        val playToken = chain.proceed(request).let { response ->
+            if (!response.isSuccessful) {
+                response.close()
+                throw Exception("Failed to resolve audio token: HTTP ${response.code}")
+            }
+            response.parseAs<AudioTokenResponse>().result.playToken
+        }
+
+        val mediaUrl = Base64.decode(playToken, Base64.DEFAULT)
+            .toString(Charsets.UTF_8)
+            .parseAs<PlayToken>()
+            .audioInfo.url
+
+        return chain.proceed(GET(mediaUrl, headers))
     }
 
     private suspend fun fetchMotionToonPages(document: Document): List<Page> {
@@ -427,6 +546,13 @@ abstract class Webtoons :
         }.also(screen::addPreference)
     }
 }
+
+private const val AUDIO_API_HOST = "apis.naver.com"
+private const val AUDIO_API_PATH = "/audiocweb/audiocplayogwweb/"
+
+// The surrounding __audioProperties__ object is a JS literal with unquoted keys; only the
+// episodeBgmList array is valid JSON, and it is always emitted on a single line.
+private val BGM_LIST_REGEX = Regex("""episodeBgmList:\s*(\[.*?])\s*,?\s*[\r\n]""")
 
 private const val SHOW_AUTHORS_NOTES_KEY = "showAuthorsNotes"
 private const val USE_MAX_QUALITY_KEY = "useMaxQuality"
