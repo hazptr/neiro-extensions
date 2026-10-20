@@ -39,7 +39,7 @@ jobs:
               def versioned(m):
                   digest = hashlib.sha256((page.parent / m.group(2)).read_bytes()).hexdigest()[:10]
                   return f'{m.group(1)}{m.group(2)}?v={digest}"'
-              page.write_text(re.sub(r'((?:href|src)=")(assets/[\w./-]+\.(?:css|js))(?:\?v=\w+)?"', versioned, html))
+              page.write_text(re.sub(r'((?:href|src)=")((?:\.\./)*assets/[\w./-]+\.(?:css|js))(?:\?v=\w+)?"', versioned, html))
           PY
 
       - name: Configure Pages
