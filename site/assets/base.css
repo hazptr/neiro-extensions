@@ -57,6 +57,10 @@ canvas.bubbles {
   z-index: -1;
 }
 
+/* With WebGL the canvas draws the colour field and grain itself, as one opaque layer */
+.bubbles-gl body::before,
+.bubbles-gl .grain { display: none; }
+
 /* Grain, so the gradients do not band */
 .grain {
   position: fixed;
