@@ -34,8 +34,9 @@ REPO_META = {
 SOURCE_DIR = Path(__file__).resolve().parents[2]
 ICON_FILE = "res/mipmap-xhdpi/ic_launcher.png"
 
-CERT_DIGEST_REGEX = re.compile(r"^Signer #(\d+) certificate SHA-256 digest: ([0-9a-f]{64})$", re.MULTILINE)
-CERT_DN_REGEX = re.compile(r"^Signer #\d+ certificate DN: (.*)$", re.MULTILINE)
+# Older apksigner labels signers "#1"; newer ones may label them by SDK range instead.
+CERT_DIGEST_REGEX = re.compile(r"^Signer (?:#\d+|\([^)]*\)) certificate SHA-256 digest: ([0-9a-f]{64})$", re.MULTILINE)
+CERT_DN_REGEX = re.compile(r"^Signer (?:#\d+|\([^)]*\)) certificate DN: (.*)$", re.MULTILINE)
 
 
 def find_apksigner() -> str:
@@ -60,13 +61,15 @@ def signing_fingerprint(apksigner: str, apk: Path) -> str:
         capture_output=True,
         text=True,
     ).stdout
-    digests = CERT_DIGEST_REGEX.findall(out)
+    # The same certificate can be listed once per SDK range
+    digests = set(CERT_DIGEST_REGEX.findall(out))
     if len(digests) != 1:
+        print(out, file=sys.stderr)
         raise ValueError(f"{apk.name}: expected exactly one signer, found {len(digests)}")
     if any("CN=Android Debug" in dn for dn in CERT_DN_REGEX.findall(out)):
         raise ValueError(f"{apk.name}: signed with a debug key, not the release key")
     # Lowercase hex without separators, the form the app compares against.
-    return digests[0][1]
+    return digests.pop()
 
 
 def icon_path(module: str, theme: str | None) -> Path:
