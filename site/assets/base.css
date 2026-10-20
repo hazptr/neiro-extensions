@@ -16,13 +16,15 @@
 
 html { scroll-behavior: smooth; }
 
+/* Decorations overhang their boxes on purpose; never let them widen the page (phones zoom out) */
+html, body { overflow-x: clip; }
+
 body {
   margin: 0;
   min-height: 100vh;
   background: var(--bg);
   color: var(--ink);
   font: 16px/1.6 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  overflow-x: hidden;
 }
 
 /* Slow-moving colour fields behind everything */
@@ -132,6 +134,7 @@ a { color: inherit; }
 /* Hero */
 .hero {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   text-align: center;
   min-height: min(92vh, 900px);
@@ -144,6 +147,7 @@ a { color: inherit; }
   line-height: 0.95;
   font-weight: 900;
   letter-spacing: -0.04em;
+  overflow-wrap: anywhere;
   background: linear-gradient(110deg, var(--ink) 20%, var(--accent) 45%, var(--accent-2) 60%, var(--ink) 80%);
   background-size: 250% 100%;
   -webkit-background-clip: text;
@@ -159,6 +163,8 @@ a { color: inherit; }
 /* A soft dark halo behind the hero text keeps it readable over the bubbles */
 .hero > div {
   position: relative;
+  min-width: 0;
+  max-width: 100%;
   padding: 40px 20px;
 }
 
@@ -261,7 +267,7 @@ h2 {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
   gap: 18px;
   perspective: 1200px;
 }
@@ -354,7 +360,10 @@ code, .mono {
 .copy {
   display: flex;
   align-items: center;
+  justify-self: stretch;
   gap: 10px;
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
   padding: 8px 8px 8px 16px;
   border: 1px solid var(--glass-edge);
@@ -363,6 +372,7 @@ code, .mono {
 }
 
 .copy code {
+  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
