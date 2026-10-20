@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Neiro extensions</title>
+  <meta name="description" content="Extension store for Neiro, with the sources that play background music.">
+  <meta name="theme-color" content="#07090f">
+  <link rel="icon" href="assets/neiro.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/base.css">
+  <style>
+    :root { --accent: #f5b84b; --accent-2: #2dd4bf; --glow: rgba(245, 184, 75, 0.38); }
+    .hero h1 { font-size: clamp(48px, 9vw, 120px); }
+    .notes { position: relative; height: 120px; margin-bottom: 10px; font-size: 64px; }
+    .notes span { position: absolute; left: 50%; animation: rise 4.5s ease-in infinite; opacity: 0; color: var(--accent); filter: drop-shadow(0 10px 30px var(--glow)); }
+    .notes span:nth-child(2) { animation-delay: 1.5s; color: var(--accent-2); margin-left: -60px; }
+    .notes span:nth-child(3) { animation-delay: 3s; margin-left: 40px; }
+    @keyframes rise {
+      0% { transform: translate(-50%, 60px) rotate(-10deg) scale(.6); opacity: 0; }
+      20% { opacity: 1; }
+      100% { transform: translate(-50%, -60px) rotate(12deg) scale(1.1); opacity: 0; }
+    }
+    .store { display: grid; gap: 12px; justify-items: center; max-width: 640px; margin: 0 auto; }
+    .ext { display: flex; gap: 16px; align-items: flex-start; }
+    .ext .art { position: relative; flex: none; width: 64px; height: 64px; transform: translateZ(40px); }
+    .ext .art img { width: 64px; height: 64px; border-radius: 14px; }
+    .ext .art .badge {
+      position: absolute; right: -6px; bottom: -6px; display: grid; place-items: center;
+      width: 26px; height: 26px; border-radius: 50%;
+      background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 14px;
+      box-shadow: 0 0 0 2px rgba(255,255,255,.12), 0 6px 18px var(--glow);
+      animation: bob 2.4s ease-in-out infinite;
+    }
+    @keyframes bob { 50% { transform: translateY(-3px) rotate(8deg); } }
+    .ext .meta a { color: var(--accent); text-decoration: none; }
+    .empty { color: var(--muted); }
+    #list { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); }
+  </style>
+</head>
+<body>
+  <div class="grain"></div>
+
+  <nav class="nav">
+    <a class="brand" href="../neiro/"><img src="assets/neiro.svg" alt="">Neiro</a>
+    <div class="links">
+      <a href="#extensions" class="hide-sm">Extensions</a>
+      <a href="../neiro/">App</a>
+      <a href="https://github.com/hazptr/neiro-extensions" class="hide-sm">GitHub</a>
+      <button type="button" class="sound-toggle" data-sound-toggle aria-pressed="false" title="Play a note when a bubble pops">♪ Sound</button>
+    </div>
+  </nav>
+
+  <header class="hero wrap">
+    <div>
+      <div class="notes" aria-hidden="true"><span>♪</span><span>♫</span><span>♪</span></div>
+      <h1>Neiro extensions</h1>
+      <p class="lead">Extension store for <a href="../neiro/">Neiro</a>, with sources that play background music. Your other extension stores keep working next to it.</p>
+      <div class="store">
+        <div class="actions">
+          <a class="btn primary" id="add" href="#" data-magnetic>Add to Neiro</a>
+          <a class="btn" href="#extensions" data-magnetic>See extensions</a>
+        </div>
+        <div class="copy" data-no-bubbles>
+          <code id="store-url">https://raw.githubusercontent.com/hazptr/neiro-extensions/repo/index.min.json</code>
+          <button type="button" data-copy="store-url">Copy</button>
+        </div>
+        <p class="hint">Or add it by hand in Settings, Browse, Extension stores.</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="extensions">
+      <span class="eyebrow reveal">In the store</span>
+      <h2 class="reveal">Extensions</h2>
+      <div class="grid" id="list" aria-live="polite">
+        <p class="empty">Loading the store…</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    Built on <a href="https://github.com/keiyoushi/extensions-source">keiyoushi/extensions-source</a>, Apache-2.0.
+    <br><a href="https://hazptr.github.io/">hazptr</a> · <a href="https://github.com/hazptr/neiro-extensions">Source</a>
+  </footer>
+
+  <script src="assets/bubbles.js"></script>
+  <script src="assets/fx.js"></script>
+  <script>
+    Bubbles.start({ palette: ['#f5b84b', '#2dd4bf', '#fb7185', '#fde68a', '#5eead4'], glyphs: ['♪', '♫', '♬'], density: 0.9 });
+
+    const STORE = document.getElementById('store-url').textContent;
+    const BASE = STORE.replace(/\/index\.min\.json$/, '');
+    document.getElementById('add').href = `tachiyomi://add-repo?url=${encodeURIComponent(STORE)}`;
+
+    for (const button of document.querySelectorAll('[data-copy]')) {
+      button.addEventListener('click', async () => {
+        await navigator.clipboard.writeText(document.getElementById(button.dataset.copy).textContent);
+        button.textContent = 'Copied';
+        setTimeout(() => { button.textContent = 'Copy'; }, 1600);
+      });
+    }
+
+    const languages = new Intl.DisplayNames(undefined, { type: 'language' });
+    const langName = (code) => { try { return languages.of(code); } catch { return code; } };
+
+    function card(ext) {
+      const el = document.createElement('div');
+      el.className = 'card reveal ext';
+      el.dataset.tilt = '8';
+      const langs = [...new Set(ext.sources.map((s) => s.lang))];
+      el.innerHTML = `
+        <div class="art"><img alt="" loading="lazy">${ext.audio ? '<span class="badge" title="Plays background music">♪</span>' : ''}</div>
+        <div>
+          <h3></h3>
+          <p></p>
+          <div class="meta"></div>
+        </div>`;
+      el.querySelector('img').src = `${BASE}/icon/${ext.pkg}.png`;
+      el.querySelector('h3').textContent = ext.name.replace(/^Tachiyomi: /, '');
+      el.querySelector('p').textContent = langs.length > 3
+        ? `${langs.length} languages: ${langs.slice(0, 3).map(langName).join(', ')} and more`
+        : langs.map(langName).join(', ');
+      const meta = el.querySelector('.meta');
+      const chips = [`v${ext.version}`];
+      if (ext.audio) chips.unshift('♪ Music');
+      if (ext.nsfw) chips.push('18+');
+      for (const text of chips) {
+        const chip = document.createElement('span');
+        chip.className = text.startsWith('♪') ? 'chip accent' : 'chip';
+        chip.textContent = text;
+        meta.append(chip);
+      }
+      const apk = document.createElement('a');
+      apk.className = 'chip';
+      apk.href = `${BASE}/apk/${ext.apk}`;
+      apk.textContent = 'APK';
+      meta.append(apk);
+      return el;
+    }
+
+    fetch(STORE)
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((extensions) => {
+        const list = document.getElementById('list');
+        extensions.sort((a, b) => (b.audio || 0) - (a.audio || 0) || a.name.localeCompare(b.name));
+        list.replaceChildren(...extensions.map(card));
+        Fx.apply(list);
+      })
+      .catch(() => {
+        document.getElementById('list').innerHTML = '<p class="empty">Couldn\'t load the store right now.</p>';
+      });
+  </script>
+</body>
+</html>

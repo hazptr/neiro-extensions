@@ -9,6 +9,8 @@ provided by a source. It holds one extension:
   keiyoushi's Webtoons.com instead of replacing it. In an app without `ChapterAudio`, sound
   episodes read normally, without music.
 
+The store and everything in it: [hazptr.github.io/neiro-extensions](https://hazptr.github.io/neiro-extensions/)
+
 ## Adding the repo
 
 In Neiro: **Settings → Browse → Extension stores → Add extension store**, and enter
