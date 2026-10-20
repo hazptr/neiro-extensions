@@ -11,7 +11,7 @@ provided by a source. It holds one extension:
 
 ## Adding the repo
 
-In Neiro: **Browse → Extensions → Extension stores → Add extension store**, and enter
+In Neiro: **Settings → Browse → Extension stores → Add extension store**, and enter
 
 ```
 https://raw.githubusercontent.com/hazptr/neiro-extensions/repo/index.min.json
