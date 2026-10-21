@@ -280,7 +280,6 @@ h2 {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
   gap: 18px;
-  perspective: 1200px;
 }
 
 /* Glass cards that tilt towards the pointer and catch a moving highlight */
@@ -307,6 +306,15 @@ h2 {
 .card:hover {
   border-color: color-mix(in srgb, var(--accent) 55%, transparent);
   box-shadow: 0 30px 60px -30px var(--glow);
+}
+
+/* Depth only while a pointer is tilting the card. At rest there is no perspective, so the layers
+   (icon, title, text) sit flat and line up instead of drifting by their different depths */
+@media (hover: hover) and (pointer: fine) {
+  .card:hover,
+  .card.reveal.is-visible:hover {
+    transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));
+  }
 }
 
 .card h3 {
