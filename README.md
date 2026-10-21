@@ -1,7 +1,7 @@
 # neiro-extensions
 
 Extensions for [Neiro](https://github.com/hazptr/neiro), a Mihon fork that plays background music
-provided by a source. It holds two extensions:
+provided by a source. It holds three extensions:
 
 - **Webtoons.com Audio** (`eu.kanade.tachiyomi.extension.all.webtoonsaudio`): the Webtoons.com
   extension, plus the background music of sound episodes, attached to the chapter as a
@@ -13,6 +13,10 @@ provided by a source. It holds two extensions:
   episodes end in a note (♫) in the chapter list. Challenge and Best Challenge are left out, as their
   episodes have no music. It has its own package and source ID, so it installs next to keiyoushi's
   Naver Comic.
+- **Dongman Manhua Audio** (`eu.kanade.tachiyomi.extension.zh.dongmanaudio`): keiyoushi's Dongman
+  Manhua (咚漫, dongmanmanhua.cn), plus the background music of the episodes that have one. Those
+  episodes end in a note (♫) in the chapter list. It has its own package and source ID, so it
+  installs next to keiyoushi's Dongman Manhua.
 
 The store and everything in it: [hazptr.github.io/neiro-extensions](https://hazptr.github.io/neiro-extensions/)
 
@@ -24,7 +28,7 @@ In Neiro: **Settings → Browse → Extension stores → Add extension store**, 
 https://raw.githubusercontent.com/hazptr/neiro-extensions/repo/index.min.json
 ```
 
-Both extensions then show up in the extension list.
+All three extensions then show up in the extension list.
 
 ## Building
 
@@ -35,6 +39,7 @@ plus the `ChapterAudio` types.
 ```
 ./gradlew :src:all:webtoons:assembleRelease
 ./gradlew :src:ko:naveraudio:assembleRelease
+./gradlew :src:zh:dongmanaudio:assembleRelease
 ```
 
 Release builds are signed with `signingkey.jks` in the repository root when it exists, using the
@@ -45,4 +50,4 @@ otherwise. CI builds every push to `main` and publishes the repo to the `repo` b
 
 Based on [keiyoushi/extensions-source](https://github.com/keiyoushi/extensions-source) at
 [`ff521c17bb3e503c01e658e8fac00b60a95829f3`](https://github.com/keiyoushi/extensions-source/tree/ff521c17bb3e503c01e658e8fac00b60a95829f3),
-trimmed to what the two extensions need. Licensed under the Apache License 2.0, see [LICENSE](LICENSE).
+trimmed to what the three extensions need. Licensed under the Apache License 2.0, see [LICENSE](LICENSE).
