@@ -8,7 +8,7 @@ keiyoushi {
     // Own package and name, so it installs alongside keiyoushi's Naver Comic and its source ID differs.
     name = "Naver Webtoon Audio"
     pkgName = "ko.naveraudio"
-    versionCode = 0
+    versionCode = 1
     contentWarning = ContentWarning.SAFE
     libVersion = "1.6"
 

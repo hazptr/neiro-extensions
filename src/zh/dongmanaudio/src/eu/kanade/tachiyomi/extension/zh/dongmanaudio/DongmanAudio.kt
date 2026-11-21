@@ -10,6 +10,7 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.SMangaUpdate
 import keiyoushi.annotation.Source
+import keiyoushi.network.Fetch
 import keiyoushi.network.get
 import keiyoushi.source.KeiSource
 import keiyoushi.utils.asJsoup
@@ -25,7 +26,7 @@ import java.util.Locale
 abstract class DongmanAudio : KeiSource() {
 
     override suspend fun getPopularManga(page: Int): MangasPage {
-        val document = client.get("$baseUrl/dailySchedule").asJsoup()
+        val document = client.get("$baseUrl/dailySchedule", Fetch.DOCUMENT).asJsoup()
 
         val entries = document.select("div#dailyList .daily_section li a, div.daily_lst.comp li a")
             .map(::mangaFromElement)
@@ -41,7 +42,7 @@ abstract class DongmanAudio : KeiSource() {
     }
 
     override suspend fun getLatestUpdates(page: Int): MangasPage {
-        val document = client.get("$baseUrl/dailySchedule?sortOrder=UPDATE&webtoonCompleteType=ONGOING").asJsoup()
+        val document = client.get("$baseUrl/dailySchedule?sortOrder=UPDATE&webtoonCompleteType=ONGOING", Fetch.DOCUMENT).asJsoup()
         val day = when (Calendar.getInstance().get(Calendar.DAY_OF_WEEK)) {
             Calendar.SUNDAY -> "div._list_SUNDAY"
             Calendar.MONDAY -> "div._list_MONDAY"
@@ -69,7 +70,7 @@ abstract class DongmanAudio : KeiSource() {
             }
         }.build()
 
-        val document = client.get(url).asJsoup()
+        val document = client.get(url, Fetch.DOCUMENT).asJsoup()
         val entries = document.select("#content > div.card_wrap.search ul:not(#filterLayer) li a")
             .map(::mangaFromElement)
         val hasNextPage = document.selectFirst("div.more_area, div.paginate a[onclick] + a") != null
@@ -83,7 +84,7 @@ abstract class DongmanAudio : KeiSource() {
         fetchDetails: Boolean,
         fetchChapters: Boolean,
     ): SMangaUpdate {
-        val document = client.get(getMangaUrl(manga)).asJsoup()
+        val document = client.get(getMangaUrl(manga), Fetch.DOCUMENT).asJsoup()
 
         val updatedManga = mangaDetailsParse(document).apply { url = manga.url }
 
@@ -135,7 +136,7 @@ abstract class DongmanAudio : KeiSource() {
             document.select("ul#_listUl li").map { chapters.add(chapterFromElement(it)) }
             document.select("div.paginate a[onclick] + a").let { element ->
                 if (element.isNotEmpty()) {
-                    document = client.get(element.attr("abs:href")).asJsoup()
+                    document = client.get(element.attr("abs:href"), Fetch.DOCUMENT).asJsoup()
                 } else {
                     continueParsing = false
                 }
@@ -154,7 +155,7 @@ abstract class DongmanAudio : KeiSource() {
     private val dateFormat = DateTimeFormatter.ofPattern("yyyy-M-d", Locale.ENGLISH)
 
     override suspend fun getPageList(chapter: SChapter): List<Page> {
-        val document = client.get(getChapterUrl(chapter)).asJsoup()
+        val document = client.get(getChapterUrl(chapter), Fetch.DOCUMENT).asJsoup()
 
         val pages = document.select("div#_imageList > img").mapIndexed { i, element ->
             Page(i, imageUrl = element.attr("data-url"))

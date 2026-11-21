@@ -8,7 +8,7 @@ keiyoushi {
     // Own package and name, so it installs alongside keiyoushi's Dongman Manhua and its source ID differs.
     name = "Dongman Manhua Audio"
     pkgName = "zh.dongmanaudio"
-    versionCode = 0
+    versionCode = 1
     contentWarning = ContentWarning.SAFE
     libVersion = "1.6"
 

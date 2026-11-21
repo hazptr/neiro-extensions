@@ -10,6 +10,7 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.SMangaUpdate
 import keiyoushi.annotation.Source
+import keiyoushi.network.Fetch
 import keiyoushi.network.get
 import keiyoushi.source.KeiSource
 import keiyoushi.utils.asJsoup
@@ -41,7 +42,7 @@ abstract class NaverAudio : KeiSource() {
 
     // ============================== Popular ==============================
 
-    override suspend fun getPopularManga(page: Int): MangasPage = client.get("$mobileUrl/$mType/weekday?sort=ALL_READER").let(::parseMangaList)
+    override suspend fun getPopularManga(page: Int): MangasPage = client.get("$mobileUrl/$mType/weekday?sort=ALL_READER", Fetch.DOCUMENT).let(::parseMangaList)
 
     private fun parseMangaList(response: Response): MangasPage {
         val document = response.asJsoup()
@@ -61,12 +62,12 @@ abstract class NaverAudio : KeiSource() {
 
     // ============================== Latest ===============================
 
-    override suspend fun getLatestUpdates(page: Int): MangasPage = client.get("$mobileUrl/$mType/weekday?sort=UPDATE").let(::parseMangaList)
+    override suspend fun getLatestUpdates(page: Int): MangasPage = client.get("$mobileUrl/$mType/weekday?sort=UPDATE", Fetch.DOCUMENT).let(::parseMangaList)
 
     // ============================== Search ===============================
 
     override suspend fun getSearchMangaList(page: Int, query: String, filters: FilterList): MangasPage {
-        val result = client.get("$baseUrl/api/search/$mType?keyword=$query&page=$page")
+        val result = client.get("$baseUrl/api/search/$mType?keyword=$query&page=$page", Fetch.XHR)
             .parseAs<ApiMangaSearchResponse>()
         return MangasPage(result.toSMangas(mType), result.hasNextPage)
     }
@@ -83,7 +84,7 @@ abstract class NaverAudio : KeiSource() {
 
         val details = if (fetchDetails) {
             async {
-                client.get("$baseUrl/api/article/list/info?titleId=$titleId")
+                client.get("$baseUrl/api/article/list/info?titleId=$titleId", Fetch.XHR)
                     .parseAs<Manga>()
                     .toSManga(mType)
                     .apply { url = manga.url }
@@ -111,7 +112,7 @@ abstract class NaverAudio : KeiSource() {
         var page = 1
 
         while (true) {
-            val result = client.get("$baseUrl/api/article/list?titleId=$titleId&page=$page")
+            val result = client.get("$baseUrl/api/article/list?titleId=$titleId&page=$page", Fetch.XHR)
                 .parseAs<ApiMangaChapterListResponse>()
 
             chapters.addAll(
@@ -137,7 +138,7 @@ abstract class NaverAudio : KeiSource() {
     // =============================== Pages ===============================
 
     override suspend fun getPageList(chapter: SChapter): List<Page> {
-        val document = client.get(getChapterUrl(chapter)).asJsoup()
+        val document = client.get(getChapterUrl(chapter), Fetch.DOCUMENT).asJsoup()
 
         var urls = document.select(".wt_viewer img").map { it.attr("abs:src").ifEmpty { it.attr("src") } }
         if (urls.isEmpty()) {
