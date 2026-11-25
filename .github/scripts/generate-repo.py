@@ -9,6 +9,7 @@ from index.min.json:
 
     index.min.json    one entry per extension
     repo.json         repo metadata, including the signing cert's SHA-256 fingerprint
+    store-icon.png    the store's icon, named by repo.json's meta.icon (relative to repo.json)
     apk/<name>.apk
     icon/<pkg>.png
 
@@ -33,10 +34,13 @@ REPO_META = {
     "name": "Neiro Extensions",
     "shortName": "Neiro",
     "website": "https://github.com/hazptr/neiro-extensions",
+    # Neiro shows it next to the store's name; other apps ignore the key
+    "icon": "store-icon.png",
 }
 
 SOURCE_DIR = Path(__file__).resolve().parents[2]
 ICON_FILE = "res/mipmap-xhdpi/ic_launcher.png"
+STORE_ICON = SOURCE_DIR / ".github/store-icon.png"
 
 # apksigner labels signers "Signer #1", "V2 Signer:" or by SDK range, depending on its version
 SIGNER = r"^(?:V\d+ )?Signer(?: #\d+| \([^)]*\))?:? certificate"
@@ -154,6 +158,7 @@ def main(artifacts_dir: Path, output_dir: Path) -> None:
     with (output_dir / "index.min.json").open("w", encoding="utf-8") as f:
         json.dump(index, f, ensure_ascii=False, separators=(",", ":"))
 
+    shutil.copyfile(STORE_ICON, output_dir / REPO_META["icon"])
     repo = {"meta": {**REPO_META, "signingKeyFingerprint": fingerprints.pop()}}
     with (output_dir / "repo.json").open("w", encoding="utf-8") as f:
         json.dump(repo, f, ensure_ascii=False, indent=2)

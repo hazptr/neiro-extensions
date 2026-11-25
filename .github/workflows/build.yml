@@ -9,6 +9,7 @@ on:
       - '!**.md'
       - '!.github/**'
       - '.github/scripts/**'
+      - '.github/store-icon.png'
       - '.github/workflows/build.yml'
   workflow_dispatch:
 
