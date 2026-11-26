@@ -105,7 +105,9 @@ jobs:
           path: artifacts
 
       - name: Generate repo
-        run: python3 main/.github/scripts/generate-repo.py artifacts repo
+        run: |
+          python3 -m pip install --user --upgrade protobuf
+          python3 main/.github/scripts/generate-repo.py artifacts repo
 
       - name: Push to repo branch
         env:

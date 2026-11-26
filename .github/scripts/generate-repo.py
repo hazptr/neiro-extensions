@@ -4,12 +4,14 @@ Usage: generate-repo.py <artifacts-dir> <output-dir>
 
 <artifacts-dir> holds the build outputs: each extension's keiyoushi-source-info.json
 (emitted by assembleRelease, see GenerateSourceInfoTask) with its release APK under
-outputs/apk/release/ next to it. <output-dir> receives the repo in the format apps read
-from index.min.json:
+outputs/apk/release/ next to it. <output-dir> receives the repo in keiyoushi's format
+(index.proto, Mihon's index plus keiyoushi's and Neiro's fields):
 
-    index.min.json    one entry per extension
-    repo.json         repo metadata, including the signing cert's SHA-256 fingerprint
-    store-icon.png    the store's icon, named by repo.json's meta.icon (relative to repo.json)
+    index.pb          the index, gzipped protobuf
+    index.json        the same index as JSON
+    repo.json         points apps given the old index.min.json URL at index.pb
+    index.min.json    empty list, so those apps go on to repo.json
+    store-icon.png    the store's icon (Index.iconUrl)
     apk/<name>.apk
     icon/<pkg>.png
 
@@ -18,6 +20,7 @@ $ANDROID_HOME/build-tools). Every APK must carry the same single signer, and a d
 signature is refused, so a build without the release key can't be published.
 """
 
+import gzip
 import json
 import os
 import re
@@ -27,16 +30,16 @@ import sys
 from pathlib import Path
 from xml.etree import ElementTree
 
+import index_pb2
+from google.protobuf import json_format
+
 ANDROID_NS = "http://schemas.android.com/apk/res/android"
 AUDIO_METADATA = "neiro.extension.audio"
 
-REPO_META = {
-    "name": "Neiro Extensions",
-    "shortName": "Neiro",
-    "website": "https://github.com/hazptr/neiro-extensions",
-    # Neiro shows it next to the store's name; other apps ignore the key
-    "icon": "store-icon.png",
-}
+STORE_NAME = "Neiro Extensions"
+BADGE_LABEL = "Neiro"
+WEBSITE = "https://github.com/hazptr/neiro-extensions"
+REPO_URL = f"https://raw.githubusercontent.com/{os.environ.get('GITHUB_REPOSITORY', 'hazptr/neiro-extensions')}/repo"
 
 SOURCE_DIR = Path(__file__).resolve().parents[2]
 ICON_FILE = "res/mipmap-xhdpi/ic_launcher.png"
@@ -109,7 +112,7 @@ def main(artifacts_dir: Path, output_dir: Path) -> None:
     apk_dir.mkdir(parents=True, exist_ok=True)
     icon_dir.mkdir(parents=True, exist_ok=True)
 
-    index = []
+    extensions = []
     fingerprints = set()
 
     for info_file in sorted(artifacts_dir.glob("**/keiyoushi-source-info.json")):
@@ -124,47 +127,75 @@ def main(artifacts_dir: Path, output_dir: Path) -> None:
         shutil.copyfile(apk, apk_dir / apk.name)
         shutil.copyfile(icon_path(info["module"], info.get("theme")), icon_dir / f"{package_name}.png")
 
-        index.append(
-            {
-                "name": f"Tachiyomi: {info['name']}",
-                "pkg": package_name,
-                "apk": apk.name,
-                # Module directory's language: "all" for multi-language extensions.
-                "lang": info["module"].split(".")[0],
-                "code": info["versionCode"],
-                "version": info["versionName"],
-                # contentWarning: SAFE=1, MIXED=2, NSFW=3
-                "nsfw": 1 if info["contentWarning"] > 2 else 0,
-                # Neiro badges extensions that play background music
-                "audio": 1 if has_audio(info["module"]) else 0,
-                "sources": [
-                    {
-                        "name": source["name"],
-                        "lang": source["lang"],
-                        "id": str(source["id"]),
-                        "baseUrl": source["baseUrl"],
-                    }
+        extensions.append(
+            index_pb2.Extension(
+                name=info["name"],
+                packageName=package_name,
+                resources=index_pb2.Resources(
+                    apkUrl=f"{REPO_URL}/apk/{apk.name}",
+                    iconUrl=f"{REPO_URL}/icon/{package_name}.png",
+                ),
+                extensionLib=info["extensionLib"],
+                versionCode=info["versionCode"],
+                versionName=info["versionName"],
+                contentWarning=info["contentWarning"],
+                sources=[
+                    index_pb2.Source(
+                        id=int(source["id"]),
+                        name=source["name"],
+                        language=source["lang"],
+                        homeUrl=source["baseUrl"],
+                        mirrorUrls=source.get("mirrorUrls", []),
+                    )
                     for source in info["sources"]
                 ],
-            }
+                audio=has_audio(info["module"]),
+            )
         )
 
-    if not index:
+    if not extensions:
         raise FileNotFoundError(f"no keiyoushi-source-info.json under {artifacts_dir}")
     if len(fingerprints) != 1:
         raise ValueError(f"APKs are signed with {len(fingerprints)} different certificates")
 
-    index.sort(key=lambda ext: ext["pkg"])
-    with (output_dir / "index.min.json").open("w", encoding="utf-8") as f:
-        json.dump(index, f, ensure_ascii=False, separators=(",", ":"))
+    extensions.sort(key=lambda ext: ext.packageName)
+    fingerprint = fingerprints.pop()
+    index = index_pb2.Index(
+        name=STORE_NAME,
+        badgeLabel=BADGE_LABEL,
+        signingKey=fingerprint,
+        contact=index_pb2.Contact(website=WEBSITE),
+        extensionList=index_pb2.ExtensionList(extensions=extensions),
+        iconUrl=f"{REPO_URL}/store-icon.png",
+    )
+    with (output_dir / "index.pb").open("wb") as f:
+        f.write(gzip.compress(index.SerializeToString(deterministic=True), mtime=0))
+    with (output_dir / "index.json").open("w", encoding="utf-8") as f:
+        f.write(
+            json_format.MessageToJson(
+                index,
+                always_print_fields_with_no_presence=False,
+                preserving_proto_field_name=True,
+            )
+        )
 
-    shutil.copyfile(STORE_ICON, output_dir / REPO_META["icon"])
-    repo = {"meta": {**REPO_META, "signingKeyFingerprint": fingerprints.pop()}}
+    repo = {
+        "index_v2": f"{REPO_URL}/index.pb",
+        "meta": {
+            "name": STORE_NAME,
+            "shortName": BADGE_LABEL,
+            "website": WEBSITE,
+            "signingKeyFingerprint": fingerprint,
+        },
+    }
     with (output_dir / "repo.json").open("w", encoding="utf-8") as f:
         json.dump(repo, f, ensure_ascii=False, indent=2)
         f.write("\n")
+    with (output_dir / "index.min.json").open("w", encoding="utf-8") as f:
+        f.write("[]")
+    shutil.copyfile(STORE_ICON, output_dir / "store-icon.png")
 
-    print(f"Wrote {len(index)} extension(s) to {output_dir}")
+    print(f"Wrote {len(extensions)} extension(s) to {output_dir}")
 
 
 if __name__ == "__main__":
