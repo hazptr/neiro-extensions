@@ -4,7 +4,7 @@ syntax = "proto3";
 // https://github.com/mihonapp/tachiyomix/blob/e4d546c/index/index.proto
 //
 // keiyoushi divergence: Resources.jarUrl (field 501)
-// ahead of upstream: Index.iconUrl (field 5)
+// ahead of upstream: Index.iconUrl (field 5), https://github.com/mihonapp/tachiyomix/pull/45
 // neiro divergence: Extension.audio (field 601)
 //
 // Regenerate the Python bindings after editing:
