@@ -1,0 +1,112 @@
+{
+  "name": "Neiro Extensions",
+  "badgeLabel": "Neiro",
+  "signingKey": "c97cee281ebe11f5e28806e96ff52c93d9bf8bccd6d8efb7415fd910780c870d",
+  "contact": {
+    "website": "https://github.com/hazptr/neiro-extensions"
+  },
+  "iconUrl": "https://raw.githubusercontent.com/hazptr/neiro-extensions/repo/store-icon.png",
+  "extensionList": {
+    "extensions": [
+      {
+        "name": "Webtoons.com Audio",
+        "packageName": "eu.kanade.tachiyomi.extension.all.webtoonsaudio",
+        "resources": {
+          "apkUrl": "https://raw.githubusercontent.com/hazptr/neiro-extensions/repo/apk/tachiyomi-all.webtoonsaudio-v1.6.3.apk",
+          "iconUrl": "https://raw.githubusercontent.com/hazptr/neiro-extensions/repo/icon/eu.kanade.tachiyomi.extension.all.webtoonsaudio.png"
+        },
+        "extensionLib": "1.6",
+        "versionCode": "106003",
+        "versionName": "1.6.3",
+        "contentWarning": "CONTENT_WARNING_SAFE",
+        "sources": [
+          {
+            "id": "8918613773983944664",
+            "name": "Webtoons.com Audio",
+            "language": "en",
+            "homeUrl": "https://www.webtoons.com"
+          },
+          {
+            "id": "8074995408001063788",
+            "name": "Webtoons.com Audio",
+            "language": "id",
+            "homeUrl": "https://www.webtoons.com"
+          },
+          {
+            "id": "5439869493629696240",
+            "name": "Webtoons.com Audio",
+            "language": "th",
+            "homeUrl": "https://www.webtoons.com"
+          },
+          {
+            "id": "6335850234332900693",
+            "name": "Webtoons.com Audio",
+            "language": "es",
+            "homeUrl": "https://www.webtoons.com"
+          },
+          {
+            "id": "8315033921811086675",
+            "name": "Webtoons.com Audio",
+            "language": "fr",
+            "homeUrl": "https://www.webtoons.com"
+          },
+          {
+            "id": "2702225555688734189",
+            "name": "Webtoons.com Audio",
+            "language": "zh-Hant",
+            "homeUrl": "https://www.webtoons.com"
+          },
+          {
+            "id": "4947365986076784917",
+            "name": "Webtoons.com Audio",
+            "language": "de",
+            "homeUrl": "https://www.webtoons.com"
+          }
+        ],
+        "audio": true
+      },
+      {
+        "name": "Naver Webtoon Audio",
+        "packageName": "eu.kanade.tachiyomi.extension.ko.naveraudio",
+        "resources": {
+          "apkUrl": "https://raw.githubusercontent.com/hazptr/neiro-extensions/repo/apk/tachiyomi-ko.naveraudio-v1.6.1.apk",
+          "iconUrl": "https://raw.githubusercontent.com/hazptr/neiro-extensions/repo/icon/eu.kanade.tachiyomi.extension.ko.naveraudio.png"
+        },
+        "extensionLib": "1.6",
+        "versionCode": "106001",
+        "versionName": "1.6.1",
+        "contentWarning": "CONTENT_WARNING_SAFE",
+        "sources": [
+          {
+            "id": "1679648342858007856",
+            "name": "Naver Webtoon Audio",
+            "language": "ko",
+            "homeUrl": "https://comic.naver.com"
+          }
+        ],
+        "audio": true
+      },
+      {
+        "name": "Dongman Manhua Audio",
+        "packageName": "eu.kanade.tachiyomi.extension.zh.dongmanaudio",
+        "resources": {
+          "apkUrl": "https://raw.githubusercontent.com/hazptr/neiro-extensions/repo/apk/tachiyomi-zh.dongmanaudio-v1.6.1.apk",
+          "iconUrl": "https://raw.githubusercontent.com/hazptr/neiro-extensions/repo/icon/eu.kanade.tachiyomi.extension.zh.dongmanaudio.png"
+        },
+        "extensionLib": "1.6",
+        "versionCode": "106001",
+        "versionName": "1.6.1",
+        "contentWarning": "CONTENT_WARNING_SAFE",
+        "sources": [
+          {
+            "id": "4693372570760201496",
+            "name": "Dongman Manhua Audio",
+            "language": "zh-Hans",
+            "homeUrl": "https://www.dongmanmanhua.cn"
+          }
+        ],
+        "audio": true
+      }
+    ]
+  }
+}
