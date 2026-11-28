@@ -3,7 +3,8 @@ syntax = "proto3";
 // Keiyoushi's index (keiyoushi/extensions-source .github/scripts/index.proto), itself
 // https://github.com/mihonapp/tachiyomix/blob/e4d546c/index/index.proto
 //
-// keiyoushi divergence: Index.iconUrl and Resources.jarUrl (field 501 in both)
+// keiyoushi divergence: Resources.jarUrl (field 501)
+// ahead of upstream: Index.iconUrl (field 5)
 // neiro divergence: Extension.audio (field 601)
 //
 // Regenerate the Python bindings after editing:
@@ -14,11 +15,11 @@ message Index {
   string badgeLabel = 2;
   string signingKey = 3;
   Contact contact = 4;
+  optional string iconUrl = 5;
   oneof extensions {
     ExtensionList extensionList = 101;
     string extensionListUrl = 102;
   }
-  string iconUrl = 501;
 }
 
 message Contact {
